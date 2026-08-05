@@ -8,7 +8,7 @@ from datetime import datetime
 # ==========================================
 YOUR_NAME = "GaGoTV"  # Burada adınızı yazın
 GITHUB_USERNAME = "GaGoTV"
-REPO_NAME = "repositoriya_adiniz"
+REPO_NAME = "sport_selcuk-auto_update.py"
 FILE_PATH = "selcuksports.m3u"  # GitHub-da görünəcək fayl adı
 GITHUB_TOKEN = "GH_PAT_TOKEN"  # GitHub Actions-da Secret kimi ötürüləcək
 
