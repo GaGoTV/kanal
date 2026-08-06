@@ -1,7 +1,6 @@
 import json
 import urllib.request
 
-# Vavoo API ünvanları
 SERVERS = ["https://vavoo.to/live2/index", "https://vavoo.to/live/index"]
 SIGNATURE_URL = "https://vavoo.to/app/v3/signature"
 
@@ -36,10 +35,10 @@ def fetch_channels():
             print(f"Server xətası ({server}): {e}")
             continue
 
-    return channels
+    return channels, token
 
 def generate_m3u():
-    channels = fetch_channels()
+    channels, token = fetch_channels()
     if not channels:
         print("Kanal tapılmadı.")
         return
@@ -48,16 +47,22 @@ def generate_m3u():
     tr_count = 0
 
     for ch in channels:
-        # Yalnız Türk kanallarını filtrləyirik
         country = ch.get("group", "") or ch.get("country", "")
+        
+        # Yalnız Türk kanalları filtri
         if "Turkey" in country or "TR" in country or ch.get("language") == "tr":
             name = ch.get("name", "Bilinməyən Kanal")
-            url = ch.get("url", "")
+            id_val = ch.get("id", "")
             logo = ch.get("logo", "")
             
-            if url:
+            if id_val:
+                # Birbaşa m3u8 strim linkini və lazımi User-Agent başlığını qururuq
+                stream_url = f"https://vavoo.to/live2/index/{id_val}?token={token}"
+                
                 m3u_content += f'#EXTINF:-1 tvg-logo="{logo}" group-title="Turk", {name}\n'
-                m3u_content += f"{url}\n"
+                # Pleyerin kənardan bloklanmaması üçün User-Agent əlavə edirik
+                m3u_content += f'#EXTVLCOPT:http-user-agent=VAVOO/2.6\n'
+                m3u_content += f"{stream_url}|User-Agent=VAVOO/2.6\n"
                 tr_count += 1
 
     with open("vavoo_tr.m3u", "w", encoding="utf-8") as f:
