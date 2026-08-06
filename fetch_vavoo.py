@@ -1,23 +1,40 @@
 import json
+import uuid
 import urllib.request
+import urllib.parse
 
+# Vavoo API ünvanları
 SERVERS = ["https://vavoo.to/live2/index", "https://vavoo.to/live/index"]
-SIGNATURE_URL = "https://vavoo.to/app/v3/signature"
+PING_URL = "https://vavoo.to/app/v3/session/ping"
+
+# Təhlükəsizlik üçün keçərli Cihaz ID-si və Headers
+device_id = str(uuid.uuid4())
 
 headers = {
     "User-Agent": "VAVOO/2.6",
-    "Accept": "*/*"
+    "Accept": "*/*",
+    "Content-Type": "application/json",
+    "x-device-id": device_id
 }
 
 def get_auth_token():
     try:
-        req = urllib.request.Request(SIGNATURE_URL, headers=headers)
-        with urllib.request.urlopen(req) as response:
+        # Vavoo v3 sessiya pingi generasiya edirik
+        payload = json.dumps({"token": "", "device_id": device_id}).encode('utf-8')
+        req = urllib.request.Request(PING_URL, data=payload, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as response:
             data = json.loads(response.read().decode())
-            return data.get("signature")
+            return data.get("token") or data.get("signature")
     except Exception as e:
-        print(f"Token alınarkən xəta: {e}")
-        return None
+        print(f"Token alına bilmədi, fallback istifadə olunur: {e}")
+        # İkinci üsul (Signature fallback)
+        try:
+            sig_req = urllib.request.Request("https://vavoo.to/app/v3/signature", headers={"User-Agent": "VAVOO/2.6"})
+            with urllib.request.urlopen(sig_req, timeout=10) as sig_res:
+                return json.loads(sig_res.read().decode()).get("signature")
+        except Exception as sig_err:
+            print(f"Fallback da xəta verdi: {sig_err}")
+            return None
 
 def fetch_channels():
     token = get_auth_token()
@@ -25,8 +42,9 @@ def fetch_channels():
     
     for server in SERVERS:
         try:
-            req = urllib.request.Request(f"{server}?token={token}", headers=headers)
-            with urllib.request.urlopen(req) as response:
+            url = f"{server}?token={token}" if token else server
+            req = urllib.request.Request(url, headers={"User-Agent": "VAVOO/2.6"})
+            with urllib.request.urlopen(req, timeout=15) as response:
                 data = json.loads(response.read().decode())
                 if isinstance(data, list):
                     channels.extend(data)
@@ -56,13 +74,16 @@ def generate_m3u():
             logo = ch.get("logo", "")
             
             if id_val:
-                # Birbaşa m3u8 strim linkini və lazımi User-Agent başlığını qururuq
-                stream_url = f"https://vavoo.to/live2/index/{id_val}?token={token}"
+                # Birbaşa m3u8 strim linki
+                stream_url = f"https://vavoo.to/live2/index/{id_val}"
+                if token:
+                    stream_url += f"?token={token}"
                 
                 m3u_content += f'#EXTINF:-1 tvg-logo="{logo}" group-title="Turk", {name}\n'
-                # Pleyerin kənardan bloklanmaması üçün User-Agent əlavə edirik
+                # VLC və OTT Pleyerlər üçün lazımi Headers parametrləri
                 m3u_content += f'#EXTVLCOPT:http-user-agent=VAVOO/2.6\n'
-                m3u_content += f"{stream_url}|User-Agent=VAVOO/2.6\n"
+                m3u_content += f'#EXTVLCOPT:http-referrer=https://vavoo.to/\n'
+                m3u_content += f"{stream_url}|User-Agent=VAVOO/2.6&Referer=https://vavoo.to/\n"
                 tr_count += 1
 
     with open("vavoo_tr.m3u", "w", encoding="utf-8") as f:
