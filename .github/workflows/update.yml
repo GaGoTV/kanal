@@ -2,9 +2,8 @@ name: Update Vavoo M3U
 
 on:
   schedule:
-    # Hər 3 saatdan bir avtomatik işə düşür
     - cron: '0 */3 * * *'
-  workflow_dispatch: # İstədiyiniz vaxt düyməyə basıb əllə də işə sala bilərsiniz
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,17 +11,17 @@ jobs:
 
     steps:
     - name: Deponu kopyala
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Python mühitini qur
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.x'
+        python-version: '3.11'
 
     - name: Skripti icra et
       run: python fetch_vavoo.py
 
-    - name: Yenilənmiş M3U faylını GitHub-a push et
+    - name: M3U faylını GitHub-a yüklə
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
