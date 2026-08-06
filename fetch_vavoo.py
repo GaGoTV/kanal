@@ -1,71 +1,61 @@
 import json
+import time
 import urllib.request
-import urllib.parse
 import sys
 
-SERVERS = ["https://vavoo.to/live2/index", "https://vavoo.to/live/index"]
-AUTH_URL = "https://vavoo.to/app/v3/session/ping"
+# Vavoo Signature və Kanal API ünvanları
+SIG_URL = "https://vavoo.to/app/v3/signature"
+CHANNELS_URL = "https://vavoo.to/live2/index"
 
 headers = {
     "User-Agent": "VAVOO/2.6",
-    "Accept": "*/*",
-    "Content-Type": "application/json"
+    "Accept": "*/*"
 }
 
-def get_auth_token():
-    # Vavoo sessiyası yaradıb aktual token almaq
-    body_data = json.dumps({"token": "", "box_id": "12345"}).encode('utf-8')
+def get_valid_token():
+    # 1-ci cəhd: Signature API
     try:
-        req = urllib.request.Request(AUTH_URL, data=body_data, headers=headers)
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = json.loads(response.read().decode())
-            token = data.get("token") or data.get("signature")
-            if token:
-                return token
+        req = urllib.request.Request(SIG_URL, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as res:
+            data = json.loads(res.read().decode())
+            if isinstance(data, dict) and data.get("signature"):
+                return data.get("signature")
+            elif isinstance(data, str):
+                return data
     except Exception as e:
-        print(f"Session ping xətası: {e}")
+        print(f"Sig API xətası: {e}")
 
-    # Ehtiyat variant (Signature API)
+    # 2-ci cəhd: Ping endpoint
     try:
-        sig_req = urllib.request.Request("https://vavoo.to/app/v3/signature", headers={"User-Agent": "VAVOO/2.6"})
-        with urllib.request.urlopen(sig_req, timeout=10) as sig_res:
-            data = json.loads(sig_res.read().decode())
-            return data.get("signature")
+        ping_url = "https://vavoo.to/app/v3/session/ping"
+        payload = json.dumps({"token": "", "box_id": "12345"}).encode('utf-8')
+        p_headers = {**headers, "Content-Type": "application/json"}
+        req = urllib.request.Request(ping_url, data=payload, headers=p_headers)
+        with urllib.request.urlopen(req, timeout=10) as res:
+            data = json.loads(res.read().decode())
+            return data.get("token") or data.get("signature")
     except Exception as e:
-        print(f"Signature xətası: {e}")
+        print(f"Ping API xətası: {e}")
 
     return None
 
-def fetch_channels(token):
-    channels = []
-    url_suffix = f"?token={token}" if token else ""
-    
-    for server in SERVERS:
-        try:
-            req = urllib.request.Request(f"{server}{url_suffix}", headers={"User-Agent": "VAVOO/2.6"})
-            with urllib.request.urlopen(req, timeout=15) as response:
-                data = json.loads(response.read().decode())
-                if isinstance(data, list):
-                    channels.extend(data)
-                    break
-        except Exception as e:
-            print(f"Server xətası ({server}): {e}")
-            continue
-
-    return channels
-
-def generate_m3u():
-    token = get_auth_token()
+def main():
+    token = get_valid_token()
     print(f"Alınan Token: {token}")
 
     if not token:
-        print("CRITICAL: Token alına bilmədi! İş dayandırılır.")
-        sys.exit(1) # Token olmasa faylı yanlış yazmasın
+        print("XƏTA: Token alına bilmədi. Vavoo sorğuna cavab vermədi.")
+        sys.exit(1)
 
-    channels = fetch_channels(token)
-    if not channels:
-        print("Kanal tapılmadı.")
-        return
+    # Kanalları çəkirik
+    req_url = f"{CHANNELS_URL}?token={token}"
+    try:
+        req = urllib.request.Request(req_url, headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as res:
+            channels = json.loads(res.read().decode())
+    except Exception as e:
+        print(f"Kanallar çəkilərkən xəta: {e}")
+        sys.exit(1)
 
     m3u_content = "#EXTM3U\n"
     tr_count = 0
@@ -73,14 +63,13 @@ def generate_m3u():
     for ch in channels:
         country = str(ch.get("group", "")) or str(ch.get("country", ""))
         
-        # Yalnız Türk kanallarını filtrləyirik
+        # Yalnız Türk kanalları filtri
         if "Turkey" in country or "TR" in country or ch.get("language") == "tr":
             name = ch.get("name", "Bilinməyən Kanal")
             url = ch.get("url", "")
             logo = ch.get("logo", "")
             
             if url:
-                # Token-in düzgün birləşdirilməsi
                 clean_url = url.split("?")[0]
                 stream_url = f"{clean_url}?token={token}"
                 
@@ -92,7 +81,7 @@ def generate_m3u():
     with open("vavoo_tr.m3u", "w", encoding="utf-8") as f:
         f.write(m3u_content)
 
-    print(f"Uğurlu! Cəmi {tr_count} Türk kanalı 'vavoo_tr.m3u' faylına yazıldı.")
+    print(f"Uğurlu! {tr_count} Türk kanalı yazıldı.")
 
 if __name__ == "__main__":
-    generate_m3u()
+    main()
