@@ -1,0 +1,31 @@
+name: Update Vavoo M3U
+
+on:
+  schedule:
+    # Hər 3 saatdan bir avtomatik işə düşür
+    - cron: '0 */3 * * *'
+  workflow_dispatch: # İstədiyiniz vaxt düyməyə basıb əllə də işə sala bilərsiniz
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Deponu kopyala
+      uses: actions/checkout@v3
+
+    - name: Python mühitini qur
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Skripti icra et
+      run: python fetch_vavoo.py
+
+    - name: Yenilənmiş M3U faylını GitHub-a push et
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add vavoo_tr.m3u
+        git commit -m "Auto-update Vavoo TR list" || exit 0
+        git push
