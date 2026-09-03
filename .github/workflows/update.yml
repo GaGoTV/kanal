@@ -2,9 +2,8 @@ name: Update Stream Link
 
 on:
   schedule:
-    # Hər 2 saatdan bir avtomatik işləyir
     - cron: '0 */2 * * *'
-  workflow_dispatch: # İstədiyiniz vaxt əllə də başlatmaq üçün
+  workflow_dispatch:
 
 jobs:
   build:
@@ -22,7 +21,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests cloudscraper
 
       - name: Run update script
         run: python update_stream.py
