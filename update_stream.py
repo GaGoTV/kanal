@@ -3,7 +3,7 @@ import requests
 
 # Yeniləmək istədiyiniz bütün kanalların siyahısı
 CHANNELS = {
-    "ARB Günəş": "https://www.canlitv.com/arb-gunes",
+    "ARB Günəş": "https://canlitv.com/arb-gunes-tv?ulke=az",
     "AZTV": "https://www.canlitv.com/aztv",
     "İctimai TV": "https://www.canlitv.com/itv-canli",
     "Space TV": "https://www.canlitv.com/space-tv-canli-izle",
