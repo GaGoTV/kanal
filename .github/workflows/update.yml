@@ -13,18 +13,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.x'
+          node-version: '20'
 
       - name: Install dependencies
-        run: pip install requests cloudscraper
+        run: npm install puppeteer
 
       - name: Run update script
-        run: python update_stream.py
+        run: node update_stream.js
 
       - name: Commit and push if changed
         run: |
